@@ -1,0 +1,81 @@
+{
+  "name": "nadil",
+  "description": "",
+  "created_at": "2026-08-19T12:21:25.636236",
+  "num_classes": 2,
+  "classes": [
+    "cats",
+    "dogs"
+  ],
+  "trained": true,
+  "model_path": "projects\\nadil\\models\\model.pth",
+  "training_history": [
+    {
+      "epoch": 1,
+      "loss": 0.7656953632831573,
+      "accuracy": 61.702127659574465
+    },
+    {
+      "epoch": 2,
+      "loss": 4.1632726192474365,
+      "accuracy": 48.93617021276596
+    },
+    {
+      "epoch": 3,
+      "loss": 3.2350189685821533,
+      "accuracy": 61.702127659574465
+    },
+    {
+      "epoch": 4,
+      "loss": 2.147657334804535,
+      "accuracy": 70.2127659574468
+    },
+    {
+      "epoch": 5,
+      "loss": 2.771556556224823,
+      "accuracy": 57.4468085106383
+    },
+    {
+      "epoch": 6,
+      "loss": 1.3963281512260437,
+      "accuracy": 76.59574468085107
+    },
+    {
+      "epoch": 7,
+      "loss": 2.421231687068939,
+      "accuracy": 55.319148936170215
+    },
+    {
+      "epoch": 8,
+      "loss": 1.609671711921692,
+      "accuracy": 65.95744680851064
+    },
+    {
+      "epoch": 9,
+      "loss": 1.4635441899299622,
+      "accuracy": 63.829787234042556
+    },
+    {
+      "epoch": 10,
+      "loss": 1.5513152778148651,
+      "accuracy": 70.2127659574468
+    }
+  ],
+  "class_counts": {
+    "cats": 24,
+    "dogs": 23
+  },
+  "training_status": {
+    "state": "completed",
+    "progress": 100,
+    "epoch": 10,
+    "total_epochs": 10,
+    "loss": 1.5513152778148651,
+    "accuracy": 70.2127659574468
+  },
+  "training_params": {
+    "epochs": 10,
+    "batch_size": 32,
+    "learning_rate": 0.001
+  }
+}

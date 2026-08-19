@@ -15,6 +15,14 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from models.model import ImageClassifier
 
+def update_training_status(config_path, config, status):
+    """Persist status so the web UI can display progress while training."""
+    config['training_status'] = status
+    temporary_path = f'{config_path}.tmp'
+    with open(temporary_path, 'w') as f:
+        json.dump(config, f, indent=2)
+    os.replace(temporary_path, config_path)
+
 def train_model(project_name, epochs=10, batch_size=32, learning_rate=0.001):
     """Train a custom image classification model"""
     
@@ -76,6 +84,14 @@ def train_model(project_name, epochs=10, batch_size=32, learning_rate=0.001):
     # Training loop
     print(f"Starting training for {epochs} epochs...\n")
     training_history = []
+    update_training_status(config_path, config, {
+        'state': 'training',
+        'progress': 0,
+        'epoch': 0,
+        'total_epochs': epochs,
+        'loss': None,
+        'accuracy': None
+    })
     
     for epoch in range(epochs):
         model.train()
@@ -122,30 +138,53 @@ def train_model(project_name, epochs=10, batch_size=32, learning_rate=0.001):
             'loss': epoch_loss,
             'accuracy': epoch_acc
         })
+        update_training_status(config_path, config, {
+            'state': 'training' if epoch + 1 < epochs else 'saving',
+            'progress': round((epoch + 1) / epochs * 100),
+            'epoch': epoch + 1,
+            'total_epochs': epochs,
+            'loss': epoch_loss,
+            'accuracy': epoch_acc
+        })
     
-    # Save model
-    model_path = os.path.join(model_dir, 'model.pth')
-    torch.save(model.state_dict(), model_path)
-    print(f"\n✅ Model saved to: {model_path}")
-    
-    # Save class labels
-    labels_path = os.path.join(model_dir, 'class_labels.json')
-    with open(labels_path, 'w') as f:
-        json.dump(class_labels, f, indent=2)
-    print(f"✅ Class labels saved to: {labels_path}")
-    
-    # Update config
-    config['trained'] = True
-    config['model_path'] = model_path
-    config['training_history'] = training_history
-    config['training_params'] = {
-        'epochs': epochs,
-        'batch_size': batch_size,
-        'learning_rate': learning_rate
-    }
-    
-    with open(config_path, 'w') as f:
-        json.dump(config, f, indent=2)
+    try:
+        # Save model and its metadata before marking training complete.
+        model_path = os.path.join(model_dir, 'model.pth')
+        torch.save(model.state_dict(), model_path)
+        print(f"\nModel saved to: {model_path}")
+
+        labels_path = os.path.join(model_dir, 'class_labels.json')
+        with open(labels_path, 'w') as f:
+            json.dump(class_labels, f, indent=2)
+        print(f"Class labels saved to: {labels_path}")
+
+        config['trained'] = True
+        config['model_path'] = model_path
+        config['training_history'] = training_history
+        config['training_params'] = {
+            'epochs': epochs,
+            'batch_size': batch_size,
+            'learning_rate': learning_rate
+        }
+
+        update_training_status(config_path, config, {
+            'state': 'completed',
+            'progress': 100,
+            'epoch': epochs,
+            'total_epochs': epochs,
+            'loss': training_history[-1]['loss'],
+            'accuracy': training_history[-1]['accuracy']
+        })
+    except Exception as error:
+        update_training_status(config_path, config, {
+            'state': 'failed',
+            'progress': 100,
+            'epoch': epochs,
+            'total_epochs': epochs,
+            'error': str(error)
+        })
+        print(f"Training finalization failed: {error}", file=sys.stderr)
+        return False
     
     print(f"\n{'='*60}")
     print(f"✅ Training Complete!")

@@ -150,6 +150,37 @@
             background: #fff3cd;
             color: #856404;
         }
+
+        .training-progress {
+            display: none;
+            margin-top: 12px;
+        }
+
+        .training-progress.visible {
+            display: block;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            color: #666;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+        }
+
+        .progress-track {
+            height: 8px;
+            overflow: hidden;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #667eea;
+            transition: width 0.4s ease;
+        }
         
         .project-actions {
             margin-top: 15px;
@@ -338,6 +369,11 @@
                         <div class="project-info">📊 Classes: ${project.num_classes || 0}</div>
                         <div class="project-info">📅 Created: ${new Date(project.created_at).toLocaleDateString()}</div>
                         <span class="project-status ${statusClass}">${statusText}</span>
+                        <div class="training-progress" id="progress-${project.name}">
+                            <div class="progress-label"><span class="progress-state">Training</span><strong class="progress-percent">0%</strong></div>
+                            <div class="progress-track"><div class="progress-bar"></div></div>
+                            <div class="project-info progress-metrics"></div>
+                        </div>
                         <div class="project-actions">
                             <button class="btn btn-primary btn-small" onclick="trainProject('${project.name}')">
                                 ${project.trained ? 'Retrain' : 'Train'}
@@ -351,6 +387,8 @@
                 
                 container.innerHTML = '';
                 container.appendChild(grid);
+                projects.filter(project => project.training_status?.state === 'training' || project.training_status?.state === 'saving')
+                    .forEach(project => pollTrainingStatus(project.name));
             } catch (error) {
                 console.error('Error loading projects:', error);
             }
@@ -410,10 +448,39 @@
                 if (data.error) {
                     alert(data.error);
                 } else {
-                    alert('Training started! This may take a while.');
+                    pollTrainingStatus(projectName);
                 }
             } catch (error) {
                 alert('Error starting training: ' + error.message);
+            }
+        }
+
+        async function pollTrainingStatus(projectName) {
+            const progress = document.getElementById(`progress-${projectName}`);
+            if (!progress) return;
+
+            progress.classList.add('visible');
+            try {
+                const response = await fetch(`/api/projects/${encodeURIComponent(projectName)}/training-status`);
+                const status = await response.json();
+                const percentage = Number(status.progress || 0);
+                progress.querySelector('.progress-bar').style.width = `${percentage}%`;
+                progress.querySelector('.progress-percent').textContent = `${percentage}%`;
+                progress.querySelector('.progress-state').textContent = status.state === 'saving'
+                    ? 'Saving model'
+                    : status.state === 'completed' ? 'Complete' : `Epoch ${status.epoch}/${status.total_epochs}`;
+                progress.querySelector('.progress-metrics').textContent = status.loss == null
+                    ? 'Preparing dataset...'
+                    : `Loss: ${status.loss.toFixed(4)} · Accuracy: ${status.accuracy.toFixed(2)}%`;
+
+                if (status.state === 'training' || status.state === 'saving') {
+                    setTimeout(() => pollTrainingStatus(projectName), 1000);
+                } else {
+                    loadProjects();
+                }
+            } catch (error) {
+                console.error('Error loading training status:', error);
+                setTimeout(() => pollTrainingStatus(projectName), 2000);
             }
         }
         

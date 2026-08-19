@@ -68,6 +68,40 @@ def get_project(project_name):
             return jsonify(json.load(f))
     return jsonify({"error": "Project not found"}), 404
 
+def recover_saved_model(config_path, config):
+    """Recover projects interrupted after the model file was saved."""
+    status = config.get('training_status', {})
+    model_path = os.path.join(os.path.dirname(config_path), 'models', 'model.pth')
+    if (not config.get('trained') and status.get('progress') == 100
+            and status.get('state') == 'saving' and os.path.exists(model_path)):
+        config['trained'] = True
+        config['model_path'] = model_path
+        config['training_status'] = {
+            **status,
+            'state': 'completed'
+        }
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+    return config
+
+@app.route('/api/projects/<project_name>/training-status', methods=['GET'])
+def training_status(project_name):
+    """API: Get the current training progress for a project"""
+    config_path = os.path.join('projects', project_name, 'config.json')
+    if not os.path.exists(config_path):
+        return jsonify({"error": "Project not found"}), 404
+
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+
+    config = recover_saved_model(config_path, config)
+    return jsonify(config.get('training_status', {
+        'state': 'idle',
+        'progress': 0,
+        'epoch': 0,
+        'total_epochs': 0
+    }))
+
 @app.route('/api/create_project', methods=['POST'])
 def create_project():
     """API: Create a new project"""
@@ -206,7 +240,7 @@ def train_model():
     
     try:
         # Start training in background
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(cmd)
         return jsonify({
             "success": True,
             "message": "Training started",
@@ -258,10 +292,11 @@ def predict():
     
     try:
         prediction, confidence = predict_image(img, model_path, class_labels)
+        confidence_score = float(np.max(confidence))
         
         return jsonify({
             "prediction": prediction,
-            "confidence": float(confidence),
+            "confidence": confidence_score,
             "all_probabilities": {class_name: float(prob) 
                                  for class_name, prob in zip(class_labels, confidence)}
         })

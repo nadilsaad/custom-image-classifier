@@ -111,8 +111,9 @@ my_dataset/
 
 **Training Progress:**
 - Training happens in a separate process
-- Check the terminal/console for real-time progress
-- You'll see epoch updates and loss/accuracy metrics
+- The project card shows the current percentage, epoch, loss, and accuracy
+- Progress continues to update automatically while training runs
+- The terminal/console also contains detailed training output
 
 ### Step 5: Make Predictions
 
